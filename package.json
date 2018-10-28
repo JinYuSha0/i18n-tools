@@ -1,0 +1,22 @@
+{
+  "name": "i18n-replace",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "sjy",
+  "license": "ISC",
+  "dependencies": {
+    "js-yaml": "^3.12.0",
+    "title1": "  报账标题",
+    "sjy": {
+      "handle": {
+        "test": "去死",
+        "some": "  报账标题  "
+      },
+      "title2": "报账标题"
+    }
+  }
+}
