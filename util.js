@@ -68,9 +68,22 @@ const stdOut = (content) => {
     process.stdout.write(content + '\n\r')
 }
 
+// 获取第n行的数据正则生成
+const getRowsContentPattern = (content, n) => {
+    n -= 1
+    let pattern = ''
+    while (n) {
+        pattern += '[^\\n]*\\n'
+        n--
+    }
+    pattern += '([^\\n]*)'
+    return content.match(new RegExp(pattern))[1]
+}
+
 module.exports = {
     matchKeyByValue,
     asyncCompose,
     stdIn,
     stdOut,
+    getRowsContentPattern,
 }

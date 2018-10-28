@@ -3,10 +3,8 @@ const fs = require('fs')
 const yaml = require('js-yaml')
 const process = require('process')
 const config = require('./config')
-const {matchKeyByValue, asyncCompose, stdIn, stdOut} = require('./util')
-
-// 3.添加 国际化信息 进如对应的国际化文件路径
-// 4.添加代码进入 代码片段并且 替换
+const _ = require('lodash')
+const {matchKeyByValue, asyncCompose, stdIn, stdOut, getRowsContentPattern} = require('./util')
 
 // 行见面礼
 stdOut('\n' +
@@ -50,112 +48,146 @@ stdOut('\n' +
     ' *            9Bi,:,,,,......                        ..r91;;;;;iirrsss1ss1111\n' +
     ' */')
 
+// 指定文件的内容
+const targetContent = fs.readFileSync(config.target).toString()
+const targetFileIsVue = !!config.target.match(/\.vue/g)
+
 // 1.先去locales找到对应的字典 key 可能有多个 返回一个字典 key 对应 国际化文件路径 的 list
 async function step1() {
-    const files = fs.readdirSync(config.localesPath)
-    const matchRes = {}
-    files.forEach(file => {
-        const isYml = !!file.match(/\.yml/)
-        const filepath = path.resolve(config.localesPath, file)
-        let content = fs.readFileSync(filepath).toString()
-        // 如果json读取成功
-        if (content) {
-            if (isYml) {
-                const obj = yaml.safeLoad(content, 'utf8')
-                content = JSON.stringify(obj, null, 2)
+    try {
+        const files = fs.readdirSync(config.localesPath)
+        const matchRes = {}
+        let content = null
+        files.forEach(file => {
+            const isYml = !!file.match(/\.yml/)
+            const filepath = path.resolve(config.localesPath, file)
+            content = fs.readFileSync(filepath).toString()
+            // 如果json读取成功
+            if (content) {
+                if (isYml) {
+                    const obj = yaml.safeLoad(content, 'utf8')
+                    content = JSON.stringify(obj, null, 2)
+                }
+                try {
+                    matchRes[filepath] = matchKeyByValue(content, config.value)
+                } catch (err) {}
             }
-            try {
-                matchRes[filepath] = matchKeyByValue(content, config.value)
-            } catch (err) {}
+        })
+        if (Object.keys(matchRes).length === 0) {
+            stdOut(`没有找到与\"${config.value}\"相匹配的key`)
+            process.exit()
         }
-    })
-    if (Object.keys(matchRes).length === 0) {
-        stdOut(`没有找到与\"${config.value}\"相匹配的key`)
-        process.exit()
+        return matchRes
+    } catch (err) {
+        console.log('第一步报错')
+        throw err
     }
-    return matchRes
 }
 
 // 2.在模板中 用正则匹配 有无对应的key
-async function step2(fileKey) {
-    const matchRes = {}
-    let content = fs.readFileSync(config.target).toString()
-    Object.keys(fileKey).forEach(path => {
-        fileKey[path].forEach(key => {
-            const pattern = !!config.target.match(/\.vue/g) ? config.vuePattern(key) : config.jsPattern(key)
-            const res = content.match(pattern)
-            if (res) {
-                // 匹配到结果
-                if (!matchRes[path]) {
-                    matchRes[path] = []
+async function step2(matchRes) {
+    try {
+        const resObj = {}
+        Object.keys(matchRes).forEach(path => {
+            matchRes[path].forEach(key => {
+                const pattern = targetFileIsVue ? config.vuePattern(key) : config.jsPattern(key)
+                const res = targetContent.match(pattern)
+                if (res) {
+                    // 匹配到结果
+                    if (!resObj[path]) {
+                        resObj[path] = []
+                    }
+                    resObj[path].push({
+                        key,
+                        times: res.length   // 在文件中有出现了多少次
+                    })
                 }
-                matchRes[path].push({
-                    key,
-                    times: res.length   // 在文件中有出现了多少次
-                })
-            }
+            })
         })
-    })
-    if (Object.keys(matchRes).length === 0) {
-        stdOut(`找到相匹配的key，但是这些key在文件${config.target}中都没被使用`)
-        process.exit()
+        if (Object.keys(matchRes).length === 0) {
+            stdOut(`找到相匹配的key，但是这些key在文件${config.target}中都没被使用`)
+            process.exit()
+        }
+        return resObj
+    } catch (err) {
+        console.log('第二步报错')
+        throw err
     }
-    return matchRes
 }
 
 // 3.选择一个国际化文件 和 一个字典key 如果有多行用到这个key还需要选中一行 都只有一个那么跳过这一步
-async function step3(fileKey) {
-    const files = Object.keys(fileKey)
-    const keyList = []
-    const timeList = []
-    files.forEach(file =>{
-        fileKey[file].forEach(obj => {
-            if (keyList.indexOf(obj['key']) < 0) {
-                const index = keyList.push(obj['key'])
-                if (timeList[index-1] != null) {
-                    timeList[index-1] += obj['times']
-                } else {
-                    timeList[index-1] = obj['times']
+async function step3(matchRes) {
+    try {
+        const files = Object.keys(matchRes)
+        const keyList = []
+        const timeList = []
+        files.forEach(file =>{
+            matchRes[file].forEach(obj => {
+                const key = obj.key
+                const match = targetContent.match(new RegExp(key, 'g'))
+                if (match) {
+                    let index = keyList.indexOf(key)
+                    if (index < 0) {
+                        index = keyList.push(key)
+                        timeList[index-1] = match.length
+                    }
                 }
-            }
+            })
         })
-    })
-    async function selectLine (key, times) {
-        stdOut(`key:${key}在文件中出现了${times}次，请选择具体某一行`)
-        const input = await stdIn()
-        return { key }
-    }
-    if (keyList.length > 1) {
-        // "在文件中发现两个符合条件的key，请选择一个:"
-        const tmp = keyList.slice().map((v, i) =>{
-            return `${i+1}.${v}`
-        })
-        stdOut('\n\r'
-            + '在文件中发现两个符合条件的key，请选择一个:'
-            + '\n\r' + tmp.join('\n\r'))
-        const input = await stdIn()
-        if (!isNaN(Number(input)) && keyList[Number(input)-1]) {
-            stdOut(`您选择了${keyList[Number(input)-1]}`)
-            const times = timeList[keyList.indexOf(keyList[Number(input)-1])]
-            if (times === 1) {
-                return { key: keyList[Number(input)-1] }
-            } else {
-                return selectLine(keyList[Number(input)-1], times)
+        if (keyList.length === 1 && timeList[0] === 1) {
+            const key = keyList[0]
+            const index = targetContent.indexOf(key)
+            return {
+                key,
+                row: targetContent.substring(0, index).match(/\n/g).length + 1
             }
         } else {
-            stdOut('请输入有效选项!')
-            process.exit()  // 进程退出
+            const matchList = []
+            keyList.forEach(key => {
+                let index = 0
+                let times = timeList[keyList.indexOf(key)]
+                while (times) {
+                    index = targetContent.indexOf(key, index)
+                    const row = targetContent.substring(0, index).match(/\n/g).length + 1
+                    matchList.push({
+                        key,
+                        row,
+                        content: `第${row}行:` + getRowsContentPattern(targetContent, row)
+                    })
+                    index += 1
+                    --times
+                }
+            })
+            const rowList = matchList.map(obj => {
+                return obj.row
+            })
+            stdOut('\n\r'
+                + '在文件中发现多行能够匹配key，请选择一行:'
+                + '\n\r' + matchList.map(obj => {
+                    return obj.content
+                }).join('\n\r'))
+            const input = Number(await stdIn())
+            if (!isNaN(input) && rowList.indexOf(input) > -1) {
+                stdOut(`您选择了第${input}行`)
+                return _.find(matchList, { row: input })
+            } else {
+                stdOut('请输入有效行数!')
+                process.exit()  // 进程退出
+            }
         }
+    }  catch (err) {
+        console.log('第三步报错')
+        throw err
     }
-    if (timeList[0] > 1) {
-        return selectLine(keyList[0], timeList[0])
-    }
-    return { key: keyList[0] }
 }
 
-async function step4({ key, index }) {
+// 4.添加 国际化信息 进如对应的国际化文件路径
+// 5.添加代码进入 代码片段并且 替换
+async function step4({ key, row }) {
     if (!key) return
-    console.log('step4', key, index)
+    console.log('step4处理:', row, key)
+    process.exit()
+    // todo
 }
 
 const app = asyncCompose(

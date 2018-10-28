@@ -11,13 +11,14 @@
   "license": "ISC",
   "dependencies": {
     "js-yaml": "^3.12.0",
-    "title1": "  报账标题",
+    "lodash": "^4.17.11",
     "sjy": {
       "handle": {
-        "test": "去死",
-        "some": "  报账标题  "
+        "some": "  报账标题  ",
+        "test": "去死"
       },
       "title2": "报账标题"
-    }
+    },
+    "title1": "  报账标题"
   }
 }

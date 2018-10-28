@@ -5,6 +5,7 @@
     <el-input :placeholer="$t('aa.bb')"></el-input>
     <el-input :placeholer="$t('sjy.hand.baba')"></el-input>
     <el-input :placeholer="$t('sjy.hand.yeye')"></el-input>
+    <el-input :placeholer="$t('title')"></el-input>
 </template>
 
 <script>
