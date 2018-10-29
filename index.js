@@ -70,7 +70,9 @@ async function step1() {
                 }
                 try {
                     matchRes[filepath] = matchKeyByValue(content, config.value, config.matchingSpace)
-                } catch (err) {}
+                } catch (err) {
+                    throw err
+                }
             }
         })
         if (Object.keys(matchRes).length === 0) {

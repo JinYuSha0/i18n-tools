@@ -2,7 +2,7 @@ import * as a from 'adsds'
 import * as b from 'a1dsds'
 
 export default {
-    title: '报账标题',
+    title: '报账标题    ',
     claim: {
         aa: {
             test: 1,
@@ -20,7 +20,7 @@ export default {
             sad: '报账标题',
             ads: '111',
             dsadfsa: {
-                gg: '   报账标题   '
+                gg: '报账标题'
              },
         },
         test2: '报账标题   ',
