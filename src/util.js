@@ -1,9 +1,36 @@
 const process = require('process')
+const yaml = require('js-yaml')
+const path = require('path')
+const fs = require('fs')
 
 process.stdin.setEncoding('utf8')
 
+// 异步函数式组合
+const asyncCompose = (...fns) => x => {
+	fns = fns.reverse()
+	return fns.reduce((p, fn) => p.then(fn), Promise.resolve(x))
+}
+
+const stdIn = () => {
+	return new Promise((resolve, reject) => {
+		process.stdin.on('data', (input) => {
+			if (input != null) {
+				input = input.toString().trim()
+				resolve(input)
+			} else {
+				reject(new Error(`input is null`))
+			}
+		})
+	})
+}
+
+const stdOut = (content) => {
+	process.stdout.write(content + '\n\r')
+}
+
 /* 正向后行断言法 查找json中特定的键值对应的层级键名 */
-function matchKeyByValue(str, value, matchingSpace = true) {
+function matchKeyByValue (str, value, matchingSpace = true) {
+	if (!str) return
 	const spacePattern = matchingSpace ? '\\s{0,}' : ''
 
 	// 贮存结果
@@ -49,27 +76,29 @@ function matchKeyByValue(str, value, matchingSpace = true) {
 	return resList
 }
 
-// 异步函数式组合
-const asyncCompose = (...fns) => x => {
-	fns = fns.reverse()
-	return fns.reduce((p, fn) => p.then(fn), Promise.resolve(x))
-}
-
-const stdIn = () => {
-	return new Promise((resolve, reject) => {
-		process.stdin.on('data', (input) => {
-			if (input != null) {
-				input = input.toString().trim()
-				resolve(input)
-			} else {
-				reject(new Error(`input is null`))
+// 寻找国际化文件中对应的key
+function findKeyInLocales (config, value) {
+	const files = fs.readdirSync(config.localesPath)
+	const matchRes = {}
+	let content = null
+	files.forEach(file => {
+		const isYml = !!file.match(/\.yml/)
+		const filepath = path.resolve(config.localesPath, file)
+		content = fs.readFileSync(filepath).toString()
+		// 如果json读取成功
+		if (content) {
+			if (isYml) {
+				const obj = yaml.safeLoad(content, 'utf8')
+				content = JSON.stringify(obj, null, 2)
 			}
-		})
+			try {
+				matchRes[filepath] = matchKeyByValue(content, value || config.value, config.matchingSpace)
+			} catch (err) {
+				throw err
+			}
+		}
 	})
-}
-
-const stdOut = (content) => {
-	process.stdout.write(content + '\n\r')
+	return matchRes
 }
 
 // 获取第n行的数据正则生成
@@ -85,9 +114,10 @@ const getRowsContentPattern = (content, n) => {
 }
 
 module.exports = {
-	matchKeyByValue,
 	asyncCompose,
 	stdIn,
 	stdOut,
+	matchKeyByValue,
+	findKeyInLocales,
 	getRowsContentPattern,
 }
