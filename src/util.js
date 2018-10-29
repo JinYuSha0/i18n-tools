@@ -113,6 +113,19 @@ const getRowsContentPattern = (content, n) => {
 	return content.match(new RegExp(pattern))[1]
 }
 
+// 写国际化文件
+const writeFile = (filePath, newContent) => {
+	try {
+        if (!fs.existsSync(filePath)) {
+            fs.writeFileSync(filePath, newContent)
+			return
+        }
+        fs.appendFile(filePath, '\n' + newContent)
+    } catch (e) {
+		throw new Error('写入国际化内容失败!')
+	}
+}
+
 module.exports = {
 	asyncCompose,
 	stdIn,
@@ -120,4 +133,5 @@ module.exports = {
 	matchKeyByValue,
 	findKeyInLocales,
 	getRowsContentPattern,
+    writeFile,
 }

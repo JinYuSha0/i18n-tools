@@ -1,37 +1,51 @@
 const config = require('./config')
 const _ = require('lodash')
 const process = require('process')
-const {findKeyInLocales, stdIn, stdOut} = require('./util')
-
-const validInput = (input) => {
-	if (!input) {
-		stdOut('请输入有效的内容!')
-		process.exit()
-	}
-}
+const {asyncCompose, findKeyInLocales, stdIn, stdOut, writeFile} = require('./util')
 
 const pleaceHolder = {
 	name: '添加或者替换pleaceholder',
-	js: async function (row, key, target) {
-	},
-	vue: async function (row, key, target) {
-		stdOut('请输入pleaceholder内容:')
-		const input = await stdIn()
-		validInput(input)
-		// 复用国际化 默认选第一个
-		if (config.findContentIsInLocales) {
-			let count = 0
-			const matchRes = findKeyInLocales(config, input)
-			Object.keys(matchRes).forEach(filepath => {
-				count += matchRes[filepath].length
-			})
-			if (count > 0) {
-				console.log('复用国际化', matchRes)
-				return
-			}
-		}
+	all: async function (row, key, target) {
+		const pleaceHolderList = []
+		const promiseList = []
 		// 新建国际化
-		console.log('新建国际化')
+		config.language.forEach((language, index) => {
+            promiseList.push(() => (new Promise(async (resolve, reject) => {
+                stdOut(`请输入${language}的pleaceholder内容:`)
+                try {
+                    const content = await stdIn()
+                    pleaceHolderList[index] = content
+                    resolve(content)
+                } catch (err) {
+                    reject(err)
+                }
+            })))
+		})
+		for (let promise of promiseList) {
+			await promise()
+		}
+        // // 复用国际化 默认选第一个
+        // if (config.findContentIsInLocales) {
+        //     let count = 0
+        //     const matchRes = findKeyInLocales(config, input)
+        //     Object.keys(matchRes).forEach(filepath => {
+        //         count += matchRes[filepath].length
+        //     })
+        //     if (count > 0) {
+        //         console.log('复用国际化', matchRes)
+        //         return
+        //     }
+        // }
+
+        // writeFile(`${config.localesPath}/${config.filePrefix}_zh.yml`, 'b: 111')
+
+        // stdOut('请输入key名:')
+        // const keyName = await stdIn()
+        // // todo 校验键名是否存在
+        // validInput(keyName)
+        // stdOut('请输入pleaceholder内容:')
+        // const input = await stdIn()
+        // validInput(input)
 	}
 }
 

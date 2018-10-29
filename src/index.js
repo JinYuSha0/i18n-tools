@@ -4,7 +4,7 @@ const yaml = require('js-yaml')
 const process = require('process')
 const config = require('./config')
 const _ = require('lodash')
-const {matchKeyByValue, findKeyInLocales, asyncCompose, stdIn, stdOut, getRowsContentPattern} = require('./util')
+const {findKeyInLocales, asyncCompose, stdIn, stdOut, getRowsContentPattern} = require('./util')
 const tools = require('./tools')
 
 // 行见面礼
@@ -180,7 +180,11 @@ async function step4({key, row}) {
 	const input = Number(await stdIn()) - 1
 	if (!isNaN(input) && tools[input]) {
 		stdOut(`您选择了${tools[input]['name']}`)
-		await tools[input][targetFileIsVue ? 'vue' : 'js'](row, key, config.target, stdIn, stdOut)
+		if (tools[input].all) {
+            await tools[input].all(row, key, config.target)
+		} else {
+            await tools[input][targetFileIsVue ? 'vue' : 'js'](row, key, config.target)
+		}
 	} else {
 		stdOut('请选择有效的操作!')
 		process.exit()  // 进程退出
