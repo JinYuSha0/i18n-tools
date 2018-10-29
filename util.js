@@ -4,6 +4,8 @@ process.stdin.setEncoding('utf8')
 
 /* 最小查询法查找json中特定的键值对应的层级键名 */
 function matchKeyByValue(str, value, matchingSpace = true) {
+    // fixme 匹配空格失效了
+
     const spacePattern = matchingSpace ? '\\s{0,}' : ''
 
     // 贮存结果

@@ -20,7 +20,7 @@ export default {
             sad: '报账标题',
             ads: '111',
             dsadfsa: {
-                gg: '报账标题'
+                gg: '   报账标题   '
              },
         },
         test2: '报账标题   ',

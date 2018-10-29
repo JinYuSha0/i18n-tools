@@ -69,7 +69,7 @@ async function step1() {
                     content = JSON.stringify(obj, null, 2)
                 }
                 try {
-                    matchRes[filepath] = matchKeyByValue(content, config.value)
+                    matchRes[filepath] = matchKeyByValue(content, config.value, config.matchingSpace)
                 } catch (err) {}
             }
         })
@@ -124,7 +124,7 @@ async function step3(matchRes) {
         files.forEach(file =>{
             matchRes[file].forEach(obj => {
                 const key = obj.key
-                const match = targetContent.match(new RegExp(key, 'g'))
+                const match = targetContent.match(new RegExp(config.vuePattern(key), 'g'))
                 if (match) {
                     let index = keyList.indexOf(key)
                     if (index < 0) {
@@ -163,7 +163,9 @@ async function step3(matchRes) {
             })
             stdOut('\n\r'
                 + '在文件中发现多行能够匹配key，请选择一行:'
-                + '\n\r' + matchList.map(obj => {
+                + '\n\r' + matchList.sort((a, b) => {
+                    return a.row - b.row
+                }).map(obj => {
                     return obj.content
                 }).join('\n\r'))
             const input = Number(await stdIn())
@@ -181,8 +183,7 @@ async function step3(matchRes) {
     }
 }
 
-// 4.添加 国际化信息 进如对应的国际化文件路径
-// 5.添加代码进入 代码片段并且 替换
+// 4.选择需要做的操作  执行对应方法
 async function step4({ key, row }) {
     if (!key) return
     console.log('step4处理:', row, key)
