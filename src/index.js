@@ -175,15 +175,15 @@ async function step3(matchRes) {
 async function step4({key, row}) {
 	if (!key) return
 	stdOut('请选择您要做的操作: \n\r' + tools.map((obj, index) => {
-		return (index+1) + '.' + obj.name
+		return (index + 1) + '.' + obj.name
 	}).join('\n\r'))
 	const input = Number(await stdIn()) - 1
 	if (!isNaN(input) && tools[input]) {
 		stdOut(`您选择了${tools[input]['name']}`)
 		if (tools[input].all) {
-            await tools[input].all(row, key, config.target)
+			await tools[input].all(row, key, config.target)
 		} else {
-            await tools[input][targetFileIsVue ? 'vue' : 'js'](row, key, config.target)
+			await tools[input][targetFileIsVue ? 'vue' : 'js'](row, key, config.target)
 		}
 	} else {
 		stdOut('请选择有效的操作!')

@@ -1,7 +1,9 @@
+const os = require('os')
 const process = require('process')
 const yaml = require('js-yaml')
 const path = require('path')
 const fs = require('fs')
+const readline = require('readline')
 
 process.stdin.setEncoding('utf8')
 
@@ -29,7 +31,7 @@ const stdOut = (content) => {
 }
 
 /* 正向后行断言法 查找json中特定的键值对应的层级键名 */
-function matchKeyByValue (str, value, matchingSpace = true) {
+function matchKeyByValue(str, value, matchingSpace = true) {
 	if (!str) return
 	const spacePattern = matchingSpace ? '\\s{0,}' : ''
 
@@ -77,7 +79,7 @@ function matchKeyByValue (str, value, matchingSpace = true) {
 }
 
 // 寻找国际化文件中对应的key
-function findKeyInLocales (config, value) {
+function findKeyInLocales(config, value) {
 	const files = fs.readdirSync(config.localesPath)
 	const matchRes = {}
 	let content = null
@@ -115,15 +117,55 @@ const getRowsContentPattern = (content, n) => {
 
 // 写国际化文件
 const writeFile = (filePath, newContent) => {
-	try {
-        if (!fs.existsSync(filePath)) {
-            fs.writeFileSync(filePath, newContent)
-			return
-        }
-        fs.appendFile(filePath, '\n' + newContent)
-    } catch (e) {
-		throw new Error('写入国际化内容失败!')
-	}
+	return new Promise((resolve, reject) => {
+		try {
+			if (!fs.existsSync(filePath)) {
+				const res = fs.writeFileSync(filePath, newContent)
+				resolve(res)
+				return
+			}
+			const res= fs.appendFileSync(filePath, '\n' + newContent)
+			resolve(res)
+		} catch (e) {
+			reject(new Error('写入国际化内容失败!'))
+		}
+	})
+}
+
+// fixme 待优化 替换某一行
+const replaceOneLine = (filepath, matchLine, replaceFunc) => {
+	return new Promise((resolve, reject) => {
+		let lineIndex = 0
+		let result = ''
+		const fRead = fs.createReadStream(filepath)
+		fRead.on('error', (err) => {
+			reject(err)
+		})
+		const rl = readline.createInterface({
+			input: fRead,
+		})
+		rl.on('line', (line) => {
+			++lineIndex
+			if (lineIndex === matchLine) {
+				result += replaceFunc(line) + os.EOL
+			} else {
+				result += line + os.EOL
+			}
+		})
+		rl.on('close', () => {
+			const fWrite = fs.createWriteStream(filepath)
+			fWrite.on('open', () => {
+				fWrite.write(result, 'UTF8')
+				fWrite.end()
+			})
+			fWrite.on('error', (err) => {
+				reject(err)
+			})
+			fWrite.on('finish', () => {
+				resolve()
+			})
+		})
+	})
 }
 
 module.exports = {
@@ -133,5 +175,6 @@ module.exports = {
 	matchKeyByValue,
 	findKeyInLocales,
 	getRowsContentPattern,
-    writeFile,
+	writeFile,
+	replaceOneLine,
 }
