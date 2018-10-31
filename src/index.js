@@ -92,7 +92,7 @@ async function step2(matchRes) {
 				}
 			})
 		})
-		if (Object.keys(matchRes).length === 0) {
+		if (Object.keys(resObj).length === 0) {
 			stdOut(`找到相匹配的key，但是这些key在文件${config.target}中都没被使用`)
 			process.exit()
 		}
@@ -132,17 +132,19 @@ async function step3(matchRes) {
 		} else {
 			const matchList = []
 			keyList.forEach(key => {
-				let index = 0
+				let str = targetContent
 				let times = timeList[keyList.indexOf(key)]
+				const reg0 = new RegExp('((?<![\'\"]' + key + '[\'\"])[\\s\\S])*')
+				const reg1 = new RegExp('[\'\"]' +  key + '[\'\"]')
 				while (times) {
-					index = targetContent.indexOf(key, index)
-					const row = targetContent.substring(0, index).match(/\n/g).length + 1
+					const tmp = str.match(reg0)[0]
+					const row = tmp.match(/\n/g).length + 1
 					matchList.push({
 						key,
 						row,
 						content: `第${row}行:` + getRowsContentPattern(targetContent, row)
 					})
-					index += 1
+					str = str.replace(reg1, '')
 					--times
 				}
 			})
