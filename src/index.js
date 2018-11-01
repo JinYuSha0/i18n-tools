@@ -122,50 +122,41 @@ async function step3(matchRes) {
 				}
 			})
 		})
-		if (keyList.length === 1 && timeList[0] === 1) {
-			const key = keyList[0]
-			const index = targetContent.indexOf(key)
-			return {
-				key,
-				row: targetContent.substring(0, index).match(/\n/g).length + 1
+		const matchList = []
+		keyList.forEach(key => {
+			let str = targetContent
+			let times = timeList[keyList.indexOf(key)]
+			const reg0 = new RegExp('((?<![\'\"]' + key + '[\'\"])[\\s\\S])*')
+			const reg1 = new RegExp('[\'\"]' +  key + '[\'\"]')
+			while (times) {
+				const tmp = str.match(reg0)[0]
+				const row = tmp.match(/\n/g).length + 1
+				matchList.push({
+					key,
+					row,
+					content: `第${row}行:` + getRowsContentPattern(targetContent, row)
+				})
+				str = str.replace(reg1, '')
+				--times
 			}
+		})
+		const rowList = matchList.map(obj => {
+			return obj.row
+		})
+		stdOut('\n\r'
+			+ `在文件中发现能够匹配\"${config.value}\",请选择一行:`
+			+ '\n\r' + matchList.sort((a, b) => {
+				return a.row - b.row
+			}).map(obj => {
+				return obj.content
+			}).join('\n\r'))
+		const input = Number(await stdIn())
+		if (!isNaN(input) && rowList.indexOf(input) > -1) {
+			stdOut(`您选择了第${input}行`)
+			return _.find(matchList, {row: input})
 		} else {
-			const matchList = []
-			keyList.forEach(key => {
-				let str = targetContent
-				let times = timeList[keyList.indexOf(key)]
-				const reg0 = new RegExp('((?<![\'\"]' + key + '[\'\"])[\\s\\S])*')
-				const reg1 = new RegExp('[\'\"]' +  key + '[\'\"]')
-				while (times) {
-					const tmp = str.match(reg0)[0]
-					const row = tmp.match(/\n/g).length + 1
-					matchList.push({
-						key,
-						row,
-						content: `第${row}行:` + getRowsContentPattern(targetContent, row)
-					})
-					str = str.replace(reg1, '')
-					--times
-				}
-			})
-			const rowList = matchList.map(obj => {
-				return obj.row
-			})
-			stdOut('\n\r'
-				+ `在文件中发现多行能够匹配\"${config.value}\",请选择一行:`
-				+ '\n\r' + matchList.sort((a, b) => {
-					return a.row - b.row
-				}).map(obj => {
-					return obj.content
-				}).join('\n\r'))
-			const input = Number(await stdIn())
-			if (!isNaN(input) && rowList.indexOf(input) > -1) {
-				stdOut(`您选择了第${input}行`)
-				return _.find(matchList, {row: input})
-			} else {
-				stdOut('请输入有效行数!')
-				process.exit()  // 进程退出
-			}
+			stdOut('请输入有效行数!')
+			process.exit()  // 进程退出
 		}
 	} catch (err) {
 		console.log('第三步报错')
